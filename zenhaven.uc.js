@@ -426,6 +426,7 @@
               let currentStatusFilter = 'all';
               let currentCategoryFilter = 'all';
               let currentSearchTerm = '';
+              let categoryActiveIndicatorEl; // --- NEW: For animation
 
               // --- Helper Functions ---
               function formatBytes(bytes, decimals = 2) {
@@ -455,14 +456,12 @@
                 }
               }
 
-              // **** getFileCategory ****
               function getFileCategory(filename) {
                 const fn = filename || "";
                 const extension = fn.includes('.') ? fn.split('.').pop().toLowerCase() : '';
 
                 if (['png', 'jpg', 'jpeg', 'gif', 'bmp', 'svg', 'webp', 'heic', 'avif'].includes(extension)) return 'images';
                 if (['mp3', 'wav', 'ogg', 'aac', 'flac', 'm4a', 'mp4', 'mkv', 'avi', 'mov', 'webm', 'flv'].includes(extension)) return 'media';
-                // Everything else (PDF, DOC, TXT, ZIP, EXE, etc.) will fall under 'documents' for filtering
                 return 'documents';
               }
 
@@ -506,17 +505,25 @@
               function renderUI() {
                 downloadsViewContainer.innerHTML = '';
 
+                const SEARCH_SVG = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 21L16.66 16.66M19 11C19 15.4183 15.4183 19 11 19C6.58172 19 3 15.4183 3 11C3 6.58172 6.58172 3 11 3C15.4183 3 19 6.58172 19 11Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+                const ALL_FILES_SVG = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 14.0001L7.5 11.1001C7.66307 10.7762 7.91112 10.5028 8.21761 10.309C8.5241 10.1153 8.8775 10.0085 9.24 10.0001H20M20 10.0001C20.3055 9.99956 20.6071 10.069 20.8816 10.2032C21.1561 10.3373 21.3963 10.5326 21.5836 10.774C21.7709 11.0153 21.9004 11.2964 21.9622 11.5956C22.024 11.8949 22.0164 12.2043 21.94 12.5001L20.4 18.5001C20.2886 18.9317 20.0362 19.3136 19.6829 19.5854C19.3296 19.8571 18.8957 20.0031 18.45 20.0001H4C3.46957 20.0001 2.96086 19.7894 2.58579 19.4143C2.21071 19.0392 2 18.5305 2 18.0001V5.0001C2 4.46966 2.21071 3.96096 2.58579 3.58588C2.96086 3.21081 3.46957 3.0001 4 3.0001H7.9C8.23449 2.99682 8.56445 3.07748 8.8597 3.23472C9.15495 3.39195 9.40604 3.62072 9.59 3.9001L10.4 5.1001C10.5821 5.37663 10.83 5.60362 11.1215 5.7607C11.413 5.91778 11.7389 6.00004 12.07 6.0001H18C18.5304 6.0001 19.0391 6.21081 19.4142 6.58588C19.7893 6.96096 20 7.46966 20 8.0001V10.0001Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+                const DOCS_SVG = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M14 2V6C14 6.53043 14.2107 7.03914 14.5858 7.41421C14.9609 7.78929 15.4696 8 16 8H20M10 9H8M16 13H8M16 17H8M15 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V7L15 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+                const IMAGES_SVG = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 15L17.914 11.914C17.5389 11.5391 17.0303 11.3284 16.5 11.3284C15.9697 11.3284 15.4611 11.5391 15.086 11.914L6 21M5 3H19C20.1046 3 21 3.89543 21 5V19C21 20.1046 20.1046 21 19 21H5C3.89543 21 3 20.1046 3 19V5C3 3.89543 3.89543 3 5 3ZM11 9C11 10.1046 10.1046 11 9 11C7.89543 11 7 10.1046 7 9C7 7.89543 7.89543 7 9 7C10.1046 7 11 7.89543 11 9Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+                const MEDIA_SVG = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 10V13M6 6V17M10 3V21M14 8V15M18 5V18M22 10V13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+
                 const header = document.createElement('div');
                 header.className = 'haven-dl-header';
                 const titleSection = document.createElement('div');
                 titleSection.className = 'haven-dl-title-section';
-                const titleIconPlaceholder = document.createElement('span');
-                titleIconPlaceholder.className = 'haven-dl-title-icon-placeholder';
-                titleIconPlaceholder.textContent = '⬇';
+                // --- MODIFIED: Removed title icon placeholder content ---
+                // const titleIconPlaceholder = document.createElement('span');
+                // titleIconPlaceholder.className = 'haven-dl-title-icon-placeholder';
+                // titleIconPlaceholder.textContent = '⬇'; // Removed emoji
                 const titleText = document.createElement('h1');
                 titleText.className = 'haven-dl-title-text';
                 titleText.textContent = 'Downloads';
-                titleSection.appendChild(titleIconPlaceholder);
+                // titleSection.appendChild(titleIconPlaceholder); // Not appending if empty
                 titleSection.appendChild(titleText);
                 header.appendChild(titleSection);
 
@@ -530,7 +537,7 @@
                 searchBox.className = 'haven-dl-search-box';
                 const searchIconPlaceholder = document.createElement('span');
                 searchIconPlaceholder.className = 'haven-dl-search-icon-placeholder';
-                searchIconPlaceholder.textContent = '🔍';
+                searchIconPlaceholder.innerHTML = SEARCH_SVG;
                 const searchInput = document.createElement('input');
                 searchInput.type = 'text';
                 searchInput.className = 'haven-dl-search-input';
@@ -569,20 +576,51 @@
                 searchFilterRow.appendChild(viewToggle);
                 controls.appendChild(searchFilterRow);
 
-                const categoryTabs = document.createElement('div');
-                categoryTabs.className = 'haven-dl-category-tabs';
+                const categoryTabsContainer = document.createElement('div'); // Renamed for clarity
+                categoryTabsContainer.className = 'haven-dl-category-tabs-container'; // --- NEW class for positioning context
+
+                // --- NEW: Create the active indicator element ---
+                categoryActiveIndicatorEl = document.createElement('div');
+                categoryActiveIndicatorEl.className = 'haven-dl-category-active-indicator';
+                categoryTabsContainer.appendChild(categoryActiveIndicatorEl);
+
+
                 const categories = [
-                  { id: 'all', text: '📁 All Files' }, { id: 'documents', text: '📄 Documents' },
-                  { id: 'images', text: '🖼️ Images' }, { id: 'media', text: '🎵 Media' }
+                  { id: 'all', text: 'All Files', svg: ALL_FILES_SVG },
+                  { id: 'documents', text: 'Documents', svg: DOCS_SVG },
+                  { id: 'images', text: 'Images', svg: IMAGES_SVG },
+                  { id: 'media', text: 'Media', svg: MEDIA_SVG }
                 ];
+
+                let firstTab = true;
                 categories.forEach(cat => {
                   const tab = document.createElement('button');
-                  tab.className = `haven-dl-category-tab ${currentCategoryFilter === cat.id ? 'active' : ''}`;
+                  tab.className = `haven-dl-category-tab`; // Removed active class from here initially
+                  if (currentCategoryFilter === cat.id) {
+                     tab.classList.add('active'); // Add active for text color
+                  }
                   tab.dataset.category = cat.id;
-                  tab.textContent = cat.text;
-                  categoryTabs.appendChild(tab);
+
+                  const iconSpan = document.createElement('span');
+                  iconSpan.className = 'haven-dl-tab-icon';
+                  iconSpan.innerHTML = cat.svg;
+
+                  const textSpan = document.createElement('span');
+                  textSpan.textContent = cat.text;
+
+                  tab.appendChild(iconSpan);
+                  tab.appendChild(textSpan);
+                  categoryTabsContainer.appendChild(tab); // Append tab to the container
+
+                  // --- MODIFIED: Set initial position for indicator (after tabs are in DOM) ---
+                  // This will be called again fully in attachEventListeners / updateCategoryIndicatorPosition
+                  if (firstTab && currentCategoryFilter === cat.id) {
+                    // Delay slightly to ensure tab is rendered for offsetWidth/offsetLeft
+                    requestAnimationFrame(() => updateCategoryIndicatorPosition(tab));
+                  }
+                  firstTab = false;
                 });
-                controls.appendChild(categoryTabs);
+                controls.appendChild(categoryTabsContainer); // Append the whole container to controls
 
                 const stats = document.createElement('div');
                 stats.className = 'haven-dl-stats-bar';
@@ -607,7 +645,29 @@
 
                 updateAndRenderDownloadsList();
                 attachEventListeners();
+
+                // --- NEW: Ensure indicator is correctly positioned after initial render ---
+                const initialActiveTab = categoryTabsContainer.querySelector(`.haven-dl-category-tab[data-category="${currentCategoryFilter}"]`);
+                if (initialActiveTab) {
+                    requestAnimationFrame(() => updateCategoryIndicatorPosition(initialActiveTab));
+                }
               }
+
+              // --- NEW: Function to update category indicator position ---
+              function updateCategoryIndicatorPosition(activeTabElement) {
+                if (!categoryActiveIndicatorEl || !activeTabElement) return;
+                const tabContainer = activeTabElement.parentElement; // Should be categoryTabsContainer
+                if (!tabContainer) return;
+
+                // Calculate position relative to the container
+                const containerRect = tabContainer.getBoundingClientRect();
+                const tabRect = activeTabElement.getBoundingClientRect();
+
+                categoryActiveIndicatorEl.style.left = `${tabRect.left - containerRect.left}px`;
+                categoryActiveIndicatorEl.style.width = `${activeTabElement.offsetWidth}px`;
+                // Height and top are set by CSS to match the tab design
+              }
+
 
               function updateAndRenderDownloadsList() {
                 applyAllFilters();
@@ -768,7 +828,9 @@
 
                 const itemActionsDiv = document.createElement('div');
                 itemActionsDiv.className = 'haven-dl-item-actions';
-                itemActionsDiv.innerHTML = getActionButtonsHTML(item);
+                
+                const actionButtons = getActionButtonsDOM(item);
+                actionButtons.forEach(button => itemActionsDiv.appendChild(button));
 
                 el.appendChild(itemIconDiv);
                 el.appendChild(itemInfoDiv);
@@ -788,18 +850,54 @@
                 return el;
               }
 
-              function getActionButtonsHTML(item) {
-                let buttons = '';
-                if (item.status === 'completed') {
-                  buttons += `<button class="haven-dl-action-btn" data-action="open" title="Open File">📂</button>`;
-                  buttons += `<button class="haven-dl-action-btn" data-action="show" title="Show in Folder">📍</button>`;
-                } else if (item.status === 'failed') {
-                  buttons += `<button class="haven-dl-action-btn" data-action="retry" title="Retry Download">🔄</button>`;
-                } else if (item.status === 'paused') {
-                  buttons += `<button class="haven-dl-action-btn" data-action="resume" title="Resume Download (Conceptual)">▶️</button>`;
+              function getActionButtonsDOM(item) {
+                const buttons = [];
+                
+                function createSVGIcon(pathD) {
+                  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+                  svg.setAttribute("width", "16");
+                  svg.setAttribute("height", "16");
+                  svg.setAttribute("viewBox", "0 0 24 24");
+                  svg.setAttribute("fill", "none");
+                  
+                  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                  path.setAttribute("d", pathD);
+                  path.setAttribute("stroke", "currentColor");
+                  path.setAttribute("stroke-width", "2");
+                  path.setAttribute("stroke-linecap", "round");
+                  path.setAttribute("stroke-linejoin", "round");
+                  
+                  svg.appendChild(path);
+                  return svg;
                 }
-                buttons += `<button class="haven-dl-action-btn" data-action="copy" title="Copy Download Link">📋</button>`;
-                buttons += `<button class="haven-dl-action-btn" data-action="remove" title="Remove from History">🗑️</button>`;
+                
+                function createActionButton(action, title, svgPathD) {
+                  const button = document.createElement('button');
+                  button.className = 'haven-dl-action-btn';
+                  button.dataset.action = action;
+                  button.title = title;
+                  button.appendChild(createSVGIcon(svgPathD));
+                  return button;
+                }
+                
+                const OPEN_FOLDER_PATH = "M3 9H21M5 3H19C20.1046 3 21 3.89543 21 5V19C21 20.1046 20.1046 21 19 21H5C3.89543 21 3 20.1046 3 19V5C3 3.89543 3.89543 3 5 3Z";
+                const OPEN_ORIGIN_PATH = "M22 12C22 17.5228 17.5228 22 12 22M22 12C22 6.47715 17.5228 2 12 2M22 12H2M12 22C6.47715 22 2 17.5228 2 12M12 22C9.43223 19.3038 8 15.7233 8 12C8 8.27674 9.43223 4.69615 12 2M12 22C14.5678 19.3038 16 15.7233 16 12C16 8.27674 14.5678 4.69615 12 2M2 12C2 6.47715 6.47715 2 12 2";
+                const DELETE_FILE_PATH = "M3 6H21M19 6V20C19 21 18 22 17 22H7C6 22 5 21 5 20V6M8 6V4C8 3 9 2 10 2H14C15 2 16 3 16 4V6";
+                const RETRY_DOWNLOAD_PATH = "M3 12C3 13.78 3.52784 15.5201 4.51677 17.0001C5.50571 18.4802 6.91131 19.6337 8.55585 20.3149C10.2004 20.9961 12.01 21.1743 13.7558 20.8271C15.5016 20.4798 17.1053 19.6226 18.364 18.364C19.6226 17.1053 20.4798 15.5016 20.8271 13.7558C21.1743 12.01 20.9961 10.2004 20.3149 8.55585C19.6337 6.91131 18.4802 5.50571 17.0001 4.51677C15.5201 3.52784 13.78 3 12 3C9.48395 3.00947 7.06897 3.99122 5.26 5.74L3 8M3 8V3M3 8H8";
+                const RESUME_DOWNLOAD_PATH = "M6 3L20 12L6 21V3Z";
+                
+                if (item.status === 'completed') {
+                  // Replace the two buttons with just one that uses the folder icon
+                  buttons.push(createActionButton("show", "Show in Folder", OPEN_FOLDER_PATH));
+                } else if (item.status === 'failed') {
+                  buttons.push(createActionButton("retry", "Retry Download", RETRY_DOWNLOAD_PATH));
+                } else if (item.status === 'paused') {
+                  buttons.push(createActionButton("resume", "Resume Download", RESUME_DOWNLOAD_PATH));
+                }
+                
+                buttons.push(createActionButton("copy", "Copy Download Link", OPEN_ORIGIN_PATH));
+                buttons.push(createActionButton("remove", "Delete File", DELETE_FILE_PATH));
+                
                 return buttons;
               }
 
@@ -829,19 +927,38 @@
                     catch (e) { console.error("Error copying link:", e); alert("Could not copy link."); }
                     break;
                   case 'remove':
-                    (async () => {
+                    // Replace history removal with file deletion
+                    if (!item.targetPath) {
+                      alert("File path not available. Cannot delete file.");
+                      return;
+                    }
+
+                    // Show confirmation popup
+                    if (confirm(`Are you sure you want to permanently delete "${item.filename}" from your system?\n\nThis action cannot be undone.`)) {
                       try {
-                        const { DownloadHistory } = ChromeUtils.importESModule("resource://gre/modules/DownloadHistory.sys.mjs");
-                        await DownloadHistory.remove([item.historicalData]);
-                        allFetchedDownloads = allFetchedDownloads.filter(d => d.id !== item.id);
-                        updateAndRenderDownloadsList();
-                      } catch (e) { console.error("Error removing download from history:", e); alert("Could not remove download from history."); }
-                    })();
+                        let file = new FileUtils.File(item.targetPath);
+                        if (file.exists()) {
+                          file.remove(false); // false = don't recursively delete directories
+                          
+                          // Mark the download as deleted in the UI without trying to remove from history
+                          item.deleted = true;
+                          
+                          // Remove from our local list to update the UI
+                          allFetchedDownloads = allFetchedDownloads.filter(d => d.id !== item.id);
+                          updateAndRenderDownloadsList();
+                          alert(`File "${item.filename}" was successfully deleted.`);
+                        } else {
+                          alert(`File "${item.filename}" not found on disk.`);
+                        }
+                      } catch (e) { 
+                        console.error("Error deleting file:", e); 
+                        alert(`Could not delete file: ${item.filename}\n\nError: ${e.message}`); 
+                      }
+                    }
                     break;
                 }
               }
 
-              // **** MODIFIED applyAllFilters for category logic ****
               function applyAllFilters() {
                 const searchTermLower = currentSearchTerm.toLowerCase();
                 const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
@@ -851,9 +968,6 @@
                   if (currentViewMode === 'history' && item.timestamp >= sevenDaysAgo) return false;
                   if (currentStatusFilter !== 'all' && item.status !== currentStatusFilter) return false;
                   
-                  // Category filter logic:
-                  // If 'all' is selected, always true for category.
-                  // Otherwise, item's category must match the selected filter.
                   if (currentCategoryFilter !== 'all' && item.category !== currentCategoryFilter) {
                       return false;
                   }
@@ -893,14 +1007,28 @@
                     updateAndRenderDownloadsList();
                   });
                 });
-                downloadsViewContainer.querySelectorAll('.haven-dl-category-tab').forEach(tab => {
+
+                // --- MODIFIED: Event listener for category tabs for animation ---
+                const categoryTabsContainerEl = downloadsViewContainer.querySelector('.haven-dl-category-tabs-container');
+                categoryTabsContainerEl.querySelectorAll('.haven-dl-category-tab').forEach(tab => {
                   tab.addEventListener('click', (e) => {
-                    currentCategoryFilter = e.currentTarget.dataset.category;
-                    downloadsViewContainer.querySelectorAll('.haven-dl-category-tab').forEach(t => t.classList.remove('active'));
-                    e.currentTarget.classList.add('active');
+                    const clickedTab = e.currentTarget;
+                    currentCategoryFilter = clickedTab.dataset.category;
+
+                    // Update active class for text color
+                    categoryTabsContainerEl.querySelectorAll('.haven-dl-category-tab').forEach(t => t.classList.remove('active'));
+                    clickedTab.classList.add('active');
+                    
+                    updateCategoryIndicatorPosition(clickedTab); // Animate indicator
                     updateAndRenderDownloadsList();
                   });
                 });
+
+                // Ensure initial indicator position is set after UI is fully ready
+                const initialActiveCatTab = categoryTabsContainerEl.querySelector(`.haven-dl-category-tab[data-category="${currentCategoryFilter}"]`);
+                if (initialActiveCatTab) {
+                    updateCategoryIndicatorPosition(initialActiveCatTab);
+                }
               }
 
               (async () => {
@@ -933,18 +1061,16 @@
                     if ((filename === 'Unknown Filename' || filename === "ErrorInPathUtil") && d.source && d.source.url) {
                       try {
                         const decodedUrl = decodeURIComponent(d.source.url);
-                        // More robust URL parsing for filename
                         let urlObj;
                         try {
                             urlObj = new URL(decodedUrl);
                             const pathSegments = urlObj.pathname.split('/');
-                            filename = pathSegments.pop() || pathSegments.pop() || 'Unknown from URL Path'; // handle trailing slash
-                        } catch (urlParseError) { // If URL is not absolute or malformed for new URL()
+                            filename = pathSegments.pop() || pathSegments.pop() || 'Unknown from URL Path';
+                        } catch (urlParseError) { 
                             const urlPartsDirect = String(d.source.url).split('/');
                             const lastPartDirect = urlPartsDirect.pop() || urlPartsDirect.pop();
                             filename = (lastPartDirect.split('?')[0]) || 'Invalid URL Filename';
                         }
-
                       }
                       catch (e) {
                         console.warn("[ZenHaven Downloads] Error extracting filename from URL:", d.source.url, e);
@@ -981,7 +1107,7 @@
                       totalBytes: totalBytes,
                       progressBytes: progressBytes,
                       type: getFileIconDetails(String(filename || "tmp.file")).text.toLowerCase(),
-                      category: getFileCategory(String(filename || "tmp.file")), // Uses updated getFileCategory
+                      category: getFileCategory(String(filename || "tmp.file")),
                       status: status,
                       url: String(d.source?.url || 'URL_MISSING'),
                       timestamp: d.endTime || d.startTime || Date.now(),
@@ -1020,15 +1146,17 @@
                   --haven-dl-icon-bg-mp3: linear-gradient(135deg, #DB7093, #D86087); --haven-dl-icon-bg-img: linear-gradient(135deg, #5CB85C, #4CAF50);
                   --haven-dl-icon-bg-default: linear-gradient(135deg, #6c757d, #5a6268);
                 }
-                .haven-downloads-container { display: flex; flex-direction: column; height: 100%; width: 100%; background-color: var(--haven-dl-bg); color: var(--haven-dl-text-primary); padding: 16px; box-sizing: border-box; overflow: hidden; font-family: system-ui, sans-serif; max-height: 100vh; }
+                /* --- MODIFIED: Overall container background to transparent --- */
+                .haven-downloads-container { display: flex; flex-direction: column; height: 100%; width: 100%; background-color: transparent; color: var(--haven-dl-text-primary); padding: 16px; box-sizing: border-box; overflow: hidden; font-family: system-ui, sans-serif; max-height: 100vh; }
                 .haven-dl-header { flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding: 0 8px; }
                 .haven-dl-title-section { display: flex; align-items: center; gap: 10px; }
-                .haven-dl-title-icon-placeholder { font-size: 24px; color: var(--haven-dl-accent-color); }
+                /* .haven-dl-title-icon-placeholder { font-size: 24px; color: var(--haven-dl-accent-color); } */ /* Style removed as icon is removed */
                 .haven-dl-title-text { font-size: 22px; font-weight: 600; margin: 0; line-height: 1; }
                 .haven-dl-controls { flex-shrink: 0; display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; padding: 0 8px; }
                 .haven-dl-search-filter-row { display: flex; gap: 10px; align-items: center; }
                 .haven-dl-search-box { position: relative; flex-grow: 1; }
-                .haven-dl-search-icon-placeholder { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--haven-dl-text-secondary); font-size: 16px; pointer-events: none; }
+                .haven-dl-search-icon-placeholder { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--haven-dl-text-secondary); pointer-events: none; display: flex; align-items: center; justify-content: center; }
+                .haven-dl-search-icon-placeholder svg { width: 16px; height: 16px; display: block; }
                 .haven-dl-search-input { width: 100%; padding: 8px 10px 8px 34px; border: 1px solid var(--haven-dl-border-color); border-radius: 6px; background-color: var(--haven-dl-surface-bg); color: var(--haven-dl-text-primary); font-size: 14px; box-sizing: border-box; height: 36px; }
                 .haven-dl-search-input:focus { outline: none; border-color: var(--haven-dl-accent-color); box-shadow: 0 0 0 2px rgba(123, 104, 238, 0.3); }
                 .haven-dl-filter-dropdown { padding: 0 12px; border: 1px solid var(--haven-dl-border-color); border-radius: 6px; background-color: var(--haven-dl-surface-bg); color: var(--haven-dl-text-primary); font-size: 13px; cursor: pointer; box-sizing: border-box; height: 36px; -moz-appearance: none; background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23${"A0A0A0".substring(1)}%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.4-5.4-12.8z%22%2F%3E%3C%2Fsvg%3E'); background-repeat: no-repeat; background-position: right 10px top 50%; background-size: .65em auto; padding-right: 30px; }
@@ -1038,15 +1166,43 @@
                 .haven-dl-view-btn:not(:last-child) { border-right: 1px solid var(--haven-dl-border-color); }
                 .haven-dl-view-btn.active { background-color: var(--haven-dl-accent-color); color: white; }
                 .haven-dl-view-btn:hover:not(.active) { background-color: var(--haven-dl-border-color); }
-                .haven-dl-category-tabs { display: flex; gap: 4px; background-color: var(--haven-dl-surface-bg); padding: 4px; border-radius: 6px; border: 1px solid var(--haven-dl-border-color); }
-                .haven-dl-category-tab { flex-grow: 1; padding: 6px 10px; border: none; background-color: transparent; border-radius: 4px; font-size: 12px; font-weight: 500; color: var(--haven-dl-text-secondary); cursor: pointer; transition: background-color 0.2s, color 0.2s; display: flex; align-items: center; justify-content: center; gap: 5px; height: 30px; box-sizing: border-box; }
-                .haven-dl-category-tab.active { background-color: var(--haven-dl-accent-color); color: white; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
-                .haven-dl-category-tab:hover:not(.active) { color: var(--haven-dl-text-primary); background-color: var(--haven-dl-border-color); }
+                
+                /* --- MODIFIED: Styles for category tabs animation --- */
+                .haven-dl-category-tabs-container { overflow: hidden; display: flex; gap: 4px; background-color: var(--haven-dl-surface-bg); padding: 4px; border-radius: 6px; border: 1px solid var(--haven-dl-border-color); position: relative; /* For absolute positioning of indicator */ }
+                .haven-dl-category-active-indicator {
+                  position: absolute;
+                  top: 4px; /* Matches container padding */
+                  height: 30px; /* Matches tab height */
+                  background-color: var(--haven-dl-accent-color);
+                  border-radius: 4px; /* Matches tab border-radius */
+                  transition: left 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), width 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); /* Bouncy animation */
+                  z-index: 0; /* Behind tab content */
+                  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+                }
+                .haven-dl-category-tab {
+                  flex-grow: 1; padding: 6px 10px; border: none; background-color: transparent; /* No background on tab itself */
+                  border-radius: 4px; font-size: 12px; font-weight: 500; color: var(--haven-dl-text-secondary);
+                  cursor: pointer; transition: color 0.2s; /* Only color transition */
+                  display: flex; align-items: center; justify-content: center; gap: 5px;
+                  height: 30px; box-sizing: border-box;
+                  position: relative; z-index: 1; /* Tab content above indicator */
+                }
+                .haven-dl-category-tab.active {
+                  color: white; /* Active tab text color */
+                  /* No background change here, indicator handles it */
+                }
+                .haven-dl-category-tab:hover:not(.active) {
+                  color: var(--haven-dl-text-primary);
+                  /* background-color: var(--haven-dl-border-color); */ /* Optional hover, consider if it clashes with indicator */
+                }
+                .haven-dl-category-tab .haven-dl-tab-icon { display: flex; align-items: center; justify-content: center; }
+                .haven-dl-category-tab .haven-dl-tab-icon svg { width: 14px; height: 14px; }
+                
                 .haven-dl-stats-bar { flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--haven-dl-text-secondary); padding: 8px; margin-bottom: 8px; border-bottom: 1px solid var(--haven-dl-border-color); }
                 .haven-dl-stats-bar strong { color: var(--haven-dl-text-primary); font-weight: 500; }
-                .haven-dl-list-container { flex: 1 1 0; overflow-y: auto; overflow-x: hidden; padding-right: 5px; scrollbar-width: thin; scrollbar-color: var(--haven-dl-border-color) var(--haven-dl-surface-bg); min-height: 0; height: 0; border: 1px solid transparent; /* For debugging scroll */ }
+                .haven-dl-list-container { flex: 1 1 0; overflow-y: auto; overflow-x: hidden; padding-right: 5px; scrollbar-width: thin; scrollbar-color: var(--haven-dl-border-color) var(--haven-dl-surface-bg); min-height: 0; height: 0; border: 1px solid transparent; }
                 .haven-dl-list-container::-webkit-scrollbar { width: 8px; } .haven-dl-list-container::-webkit-scrollbar-track { background: var(--haven-dl-surface-bg); } .haven-dl-list-container::-webkit-scrollbar-thumb { background-color: var(--haven-dl-border-color); border-radius: 4px; }
-                .haven-dl-date-separator { padding: 10px 8px; font-size: 11px; font-weight: 600; color: var(--haven-dl-text-secondary); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--haven-dl-border-color); margin: 16px 0 8px 0; position: sticky; top: -1px; background: var(--haven-dl-bg); z-index: 1; }
+                .haven-dl-date-separator { padding: 10px 8px; font-size: 11px; font-weight: 600; color: var(--haven-dl-text-secondary); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--haven-dl-border-color); margin: 16px 0 8px 0; position: sticky; top: -1px; background: var(--haven-dl-bg); /* This background might need to be transparent too if main one is */ z-index: 1; }
                 .haven-dl-item { display: flex; align-items: center; padding: 12px 8px; border-bottom: 1px solid var(--haven-dl-border-color); transition: background-color 0.15s ease; cursor: default; }
                 .haven-dl-item:hover { background-color: var(--haven-dl-surface-bg); } .haven-dl-item:last-child { border-bottom: none; }
                 .haven-dl-item-icon { width: 36px; height: 36px; border-radius: 6px; display: flex; align-items: center; justify-content: center; margin-right: 12px; font-size: 13px; color: white; font-weight: bold; flex-shrink: 0; text-transform: uppercase; }
