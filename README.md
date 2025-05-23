@@ -24,6 +24,12 @@ Tab history support that allows for easy navigation: Anoms12
 
 
 ## Current
+
+[Darsh-A](https://github.com/Darsh-A)
+![image](https://github.com/user-attachments/assets/a9c7460b-a521-4294-b0c9-4dd96c9a6e6b)
+
+
+
 [Anoms12](https://github.com/Anoms12)
 ![image](https://github.com/user-attachments/assets/df8ba264-919f-4843-9fe7-ba476ed6a470)
 
