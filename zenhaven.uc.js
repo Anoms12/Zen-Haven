@@ -404,7 +404,6 @@
           if (mutation.type === "attributes" && mutation.attributeName === "haven-downloads") {
             const sidebarContainer = document.getElementById("zen-haven-container");
 
-            // --- 1. Cleanup Existing Elements ---
             const existingDownloadsContent = sidebarContainer.querySelector('.haven-downloads-container');
             if (existingDownloadsContent) {
               existingDownloadsContent.remove();
@@ -414,7 +413,6 @@
               existingDownloadsStyles.remove();
             }
 
-            // --- 2. Check if Attribute Exists and Build Base UI ---
             if (sidebarContainer.hasAttribute("haven-downloads")) {
               const downloadsViewContainer = document.createElement("div");
               downloadsViewContainer.className = "haven-downloads-container";
@@ -426,7 +424,7 @@
               let currentStatusFilter = 'all';
               let currentCategoryFilter = 'all';
               let currentSearchTerm = '';
-              let categoryActiveIndicatorEl; // --- NEW: For animation
+              let categoryActiveIndicatorEl;
 
               // --- Helper Functions ---
               function formatBytes(bytes, decimals = 2) {
@@ -516,14 +514,9 @@
                 header.className = 'haven-dl-header';
                 const titleSection = document.createElement('div');
                 titleSection.className = 'haven-dl-title-section';
-                // --- MODIFIED: Removed title icon placeholder content ---
-                // const titleIconPlaceholder = document.createElement('span');
-                // titleIconPlaceholder.className = 'haven-dl-title-icon-placeholder';
-                // titleIconPlaceholder.textContent = '⬇'; // Removed emoji
                 const titleText = document.createElement('h1');
                 titleText.className = 'haven-dl-title-text';
                 titleText.textContent = 'Downloads';
-                // titleSection.appendChild(titleIconPlaceholder); // Not appending if empty
                 titleSection.appendChild(titleText);
                 header.appendChild(titleSection);
 
@@ -546,6 +539,47 @@
                 searchBox.appendChild(searchIconPlaceholder);
                 searchBox.appendChild(searchInput);
                 searchFilterRow.appendChild(searchBox);
+
+                const categoryTabsContainer = document.createElement('div');
+                categoryTabsContainer.className = 'haven-dl-category-tabs-container';
+
+                categoryActiveIndicatorEl = document.createElement('div');
+                categoryActiveIndicatorEl.className = 'haven-dl-category-active-indicator';
+                categoryTabsContainer.appendChild(categoryActiveIndicatorEl);
+
+                const categories = [
+                  { id: 'all', text: 'All Files', svg: ALL_FILES_SVG },
+                  { id: 'documents', text: 'Documents', svg: DOCS_SVG },
+                  { id: 'images', text: 'Images', svg: IMAGES_SVG },
+                  { id: 'media', text: 'Media', svg: MEDIA_SVG }
+                ];
+
+                let firstTab = true;
+                categories.forEach(cat => {
+                  const tab = document.createElement('button');
+                  tab.className = `haven-dl-category-tab`;
+                  if (currentCategoryFilter === cat.id) {
+                     tab.classList.add('active');
+                  }
+                  tab.dataset.category = cat.id;
+
+                  const iconSpan = document.createElement('span');
+                  iconSpan.className = 'haven-dl-tab-icon';
+                  iconSpan.innerHTML = cat.svg;
+
+                  const textSpan = document.createElement('span');
+                  textSpan.textContent = cat.text;
+
+                  tab.appendChild(iconSpan);
+                  tab.appendChild(textSpan);
+                  categoryTabsContainer.appendChild(tab);
+
+                  if (firstTab && currentCategoryFilter === cat.id) {
+                    requestAnimationFrame(() => updateCategoryIndicatorPosition(tab));
+                  }
+                  firstTab = false;
+                });
+                searchFilterRow.appendChild(categoryTabsContainer);
 
                 const statusFilter = document.createElement('select');
                 statusFilter.className = 'haven-dl-filter-dropdown';
@@ -574,53 +608,8 @@
                 viewToggle.appendChild(recentBtn);
                 viewToggle.appendChild(historyBtn);
                 searchFilterRow.appendChild(viewToggle);
+                
                 controls.appendChild(searchFilterRow);
-
-                const categoryTabsContainer = document.createElement('div'); // Renamed for clarity
-                categoryTabsContainer.className = 'haven-dl-category-tabs-container'; // --- NEW class for positioning context
-
-                // --- NEW: Create the active indicator element ---
-                categoryActiveIndicatorEl = document.createElement('div');
-                categoryActiveIndicatorEl.className = 'haven-dl-category-active-indicator';
-                categoryTabsContainer.appendChild(categoryActiveIndicatorEl);
-
-
-                const categories = [
-                  { id: 'all', text: 'All Files', svg: ALL_FILES_SVG },
-                  { id: 'documents', text: 'Documents', svg: DOCS_SVG },
-                  { id: 'images', text: 'Images', svg: IMAGES_SVG },
-                  { id: 'media', text: 'Media', svg: MEDIA_SVG }
-                ];
-
-                let firstTab = true;
-                categories.forEach(cat => {
-                  const tab = document.createElement('button');
-                  tab.className = `haven-dl-category-tab`; // Removed active class from here initially
-                  if (currentCategoryFilter === cat.id) {
-                     tab.classList.add('active'); // Add active for text color
-                  }
-                  tab.dataset.category = cat.id;
-
-                  const iconSpan = document.createElement('span');
-                  iconSpan.className = 'haven-dl-tab-icon';
-                  iconSpan.innerHTML = cat.svg;
-
-                  const textSpan = document.createElement('span');
-                  textSpan.textContent = cat.text;
-
-                  tab.appendChild(iconSpan);
-                  tab.appendChild(textSpan);
-                  categoryTabsContainer.appendChild(tab); // Append tab to the container
-
-                  // --- MODIFIED: Set initial position for indicator (after tabs are in DOM) ---
-                  // This will be called again fully in attachEventListeners / updateCategoryIndicatorPosition
-                  if (firstTab && currentCategoryFilter === cat.id) {
-                    // Delay slightly to ensure tab is rendered for offsetWidth/offsetLeft
-                    requestAnimationFrame(() => updateCategoryIndicatorPosition(tab));
-                  }
-                  firstTab = false;
-                });
-                controls.appendChild(categoryTabsContainer); // Append the whole container to controls
 
                 const stats = document.createElement('div');
                 stats.className = 'haven-dl-stats-bar';
@@ -646,26 +635,22 @@
                 updateAndRenderDownloadsList();
                 attachEventListeners();
 
-                // --- NEW: Ensure indicator is correctly positioned after initial render ---
-                const initialActiveTab = categoryTabsContainer.querySelector(`.haven-dl-category-tab[data-category="${currentCategoryFilter}"]`);
+                const initialActiveTab = downloadsViewContainer.querySelector(`.haven-dl-category-tab[data-category="${currentCategoryFilter}"]`);
                 if (initialActiveTab) {
                     requestAnimationFrame(() => updateCategoryIndicatorPosition(initialActiveTab));
                 }
               }
 
-              // --- NEW: Function to update category indicator position ---
               function updateCategoryIndicatorPosition(activeTabElement) {
                 if (!categoryActiveIndicatorEl || !activeTabElement) return;
-                const tabContainer = activeTabElement.parentElement; // Should be categoryTabsContainer
+                const tabContainer = activeTabElement.parentElement;
                 if (!tabContainer) return;
 
-                // Calculate position relative to the container
                 const containerRect = tabContainer.getBoundingClientRect();
                 const tabRect = activeTabElement.getBoundingClientRect();
 
                 categoryActiveIndicatorEl.style.left = `${tabRect.left - containerRect.left}px`;
                 categoryActiveIndicatorEl.style.width = `${activeTabElement.offsetWidth}px`;
-                // Height and top are set by CSS to match the tab design
               }
 
 
@@ -776,16 +761,12 @@
                 const iconDetails = getFileIconDetails(item.filename);
                 const statusInfo = getStatusInfo(item);
 
-                let progressPercent = 0;
-                if (item.status === 'completed') {
-                  progressPercent = 100;
-                } else if (item.progressBytes && item.totalBytes) {
-                  progressPercent = item.totalBytes > 0 ? Math.min(100, Math.max(0, (item.progressBytes / item.totalBytes) * 100)) : 0;
-                }
-
                 const itemIconDiv = document.createElement('div');
                 itemIconDiv.className = `haven-dl-item-icon ${iconDetails.className}`;
                 itemIconDiv.textContent = iconDetails.text;
+
+                const mainContentColumn = document.createElement('div');
+                mainContentColumn.className = 'haven-dl-item-main-content';
 
                 const itemInfoDiv = document.createElement('div');
                 itemInfoDiv.className = 'haven-dl-item-info';
@@ -811,31 +792,40 @@
                 itemDetailsDiv.appendChild(urlSpan);
                 itemInfoDiv.appendChild(itemNameDiv);
                 itemInfoDiv.appendChild(itemDetailsDiv);
+                mainContentColumn.appendChild(itemInfoDiv);
 
                 const itemStatusSection = document.createElement('div');
                 itemStatusSection.className = 'haven-dl-item-status-section';
-                const progressBar = document.createElement('div');
-                progressBar.className = 'haven-dl-item-progress-bar';
-                const progressFill = document.createElement('div');
-                progressFill.className = `haven-dl-item-progress-fill ${statusInfo.className}`;
-                progressFill.style.width = `${progressPercent}%`;
-                progressBar.appendChild(progressFill);
+
                 const statusText = document.createElement('div');
                 statusText.className = `haven-dl-item-status-text ${statusInfo.className}`;
                 statusText.textContent = statusInfo.text;
-                itemStatusSection.appendChild(progressBar);
-                itemStatusSection.appendChild(statusText);
+                itemStatusSection.appendChild(statusText); 
+
+                if (item.status !== 'completed') {
+                  let progressPercent = 0;
+                  if (item.progressBytes && item.totalBytes) {
+                    progressPercent = item.totalBytes > 0 ? Math.min(100, Math.max(0, (item.progressBytes / item.totalBytes) * 100)) : 0;
+                  }
+                  const progressBar = document.createElement('div');
+                  progressBar.className = 'haven-dl-item-progress-bar';
+                  const progressFill = document.createElement('div');
+                  progressFill.className = `haven-dl-item-progress-fill ${statusInfo.className}`;
+                  progressFill.style.width = `${progressPercent}%`;
+                  progressBar.appendChild(progressFill);
+                  itemStatusSection.appendChild(progressBar);
+                }
+                mainContentColumn.appendChild(itemStatusSection); 
 
                 const itemActionsDiv = document.createElement('div');
                 itemActionsDiv.className = 'haven-dl-item-actions';
                 
                 const actionButtons = getActionButtonsDOM(item);
                 actionButtons.forEach(button => itemActionsDiv.appendChild(button));
+                mainContentColumn.appendChild(itemActionsDiv); 
 
                 el.appendChild(itemIconDiv);
-                el.appendChild(itemInfoDiv);
-                el.appendChild(itemStatusSection);
-                el.appendChild(itemActionsDiv);
+                el.appendChild(mainContentColumn);
 
                 itemActionsDiv.addEventListener('click', (e) => {
                   const action = e.target.closest('button')?.dataset.action;
@@ -871,33 +861,37 @@
                   return svg;
                 }
                 
-                function createActionButton(action, title, svgPathD) {
+                function createActionButton(action, title, svgPathD, text) {
                   const button = document.createElement('button');
                   button.className = 'haven-dl-action-btn';
                   button.dataset.action = action;
                   button.title = title;
                   button.appendChild(createSVGIcon(svgPathD));
+                  if (text) {
+                      const textNode = document.createTextNode(" " + text);
+                      button.appendChild(textNode);
+                  }
                   return button;
                 }
                 
                 const OPEN_FOLDER_PATH = "M3 9H21M5 3H19C20.1046 3 21 3.89543 21 5V19C21 20.1046 20.1046 21 19 21H5C3.89543 21 3 20.1046 3 19V5C3 3.89543 3.89543 3 5 3Z";
                 const OPEN_ORIGIN_PATH = "M22 12C22 17.5228 17.5228 22 12 22M22 12C22 6.47715 17.5228 2 12 2M22 12H2M12 22C6.47715 22 2 17.5228 2 12M12 22C9.43223 19.3038 8 15.7233 8 12C8 8.27674 9.43223 4.69615 12 2M12 22C14.5678 19.3038 16 15.7233 16 12C16 8.27674 14.5678 4.69615 12 2M2 12C2 6.47715 6.47715 2 12 2";
-                const DELETE_FILE_PATH = "M3 6H21M19 6V20C19 21 18 22 17 22H7C6 22 5 21 5 20V6M8 6V4C8 3 9 2 10 2H14C15 2 16 3 16 4V6";
+                const DELETE_FILE_PATH = "M3 6H21M19 6V20C19 21 18 22 17 22H7C6 22 5 21 5 20V6M8 6V4C8 3 9 2 10 2H14C15 2 16 3 16 4V6"; // Used for Cancel and Delete/Remove
                 const RETRY_DOWNLOAD_PATH = "M3 12C3 13.78 3.52784 15.5201 4.51677 17.0001C5.50571 18.4802 6.91131 19.6337 8.55585 20.3149C10.2004 20.9961 12.01 21.1743 13.7558 20.8271C15.5016 20.4798 17.1053 19.6226 18.364 18.364C19.6226 17.1053 20.4798 15.5016 20.8271 13.7558C21.1743 12.01 20.9961 10.2004 20.3149 8.55585C19.6337 6.91131 18.4802 5.50571 17.0001 4.51677C15.5201 3.52784 13.78 3 12 3C9.48395 3.00947 7.06897 3.99122 5.26 5.74L3 8M3 8V3M3 8H8";
+                const PAUSE_DOWNLOAD_PATH = "M6 19H10V5H6V19ZM14 5V19H18V5H14Z";
                 const RESUME_DOWNLOAD_PATH = "M6 3L20 12L6 21V3Z";
-                
+
                 if (item.status === 'completed') {
-                  // Replace the two buttons with just one that uses the folder icon
-                  buttons.push(createActionButton("show", "Show in Folder", OPEN_FOLDER_PATH));
+                  buttons.push(createActionButton("show", "Show in Folder", OPEN_FOLDER_PATH, "Show"));
+                  buttons.push(createActionButton("copy", "Copy Download Link", OPEN_ORIGIN_PATH, "Copy Link"));
+                  buttons.push(createActionButton("remove", "Delete File", DELETE_FILE_PATH, "Delete"));
                 } else if (item.status === 'failed') {
-                  buttons.push(createActionButton("retry", "Retry Download", RETRY_DOWNLOAD_PATH));
-                } else if (item.status === 'paused') {
-                  buttons.push(createActionButton("resume", "Resume Download", RESUME_DOWNLOAD_PATH));
+                  buttons.push(createActionButton("retry", "Retry Download", RETRY_DOWNLOAD_PATH, "Retry"));
+                  buttons.push(createActionButton("remove", "Remove from History", DELETE_FILE_PATH, "Remove"));
+                } else if (item.status === 'paused') { // Represents active/downloading states for now
+                    buttons.push(createActionButton("pause", "Pause Download", PAUSE_DOWNLOAD_PATH, "Pause"));
+                    buttons.push(createActionButton("cancel", "Cancel Download", DELETE_FILE_PATH, "Cancel"));
                 }
-                
-                buttons.push(createActionButton("copy", "Copy Download Link", OPEN_ORIGIN_PATH));
-                buttons.push(createActionButton("remove", "Delete File", DELETE_FILE_PATH));
-                
                 return buttons;
               }
 
@@ -921,39 +915,44 @@
                     } catch (e) { console.error("Error showing file:", e); alert(`Could not show file: ${item.filename}`); }
                     break;
                   case 'retry': alert(`Retry download: ${item.filename} (Conceptual)`); break;
-                  case 'resume': alert(`Resume download: ${item.filename} (Conceptual)`); break;
+                  case 'pause': alert(`Pause download: ${item.filename} (Conceptual)`); break;
+                  // case 'resume': alert(`Resume download: ${item.filename} (Conceptual)`); break;
+                  case 'cancel': alert(`Cancel download: ${item.filename} (Conceptual)`); break;
                   case 'copy':
                     try { Cc["@mozilla.org/widget/clipboardhelper;1"].getService(Ci.nsIClipboardHelper).copyString(item.url); }
                     catch (e) { console.error("Error copying link:", e); alert("Could not copy link."); }
                     break;
                   case 'remove':
-                    // Replace history removal with file deletion
-                    if (!item.targetPath) {
+                    if (!item.targetPath && item.status === 'completed') {
                       alert("File path not available. Cannot delete file.");
                       return;
                     }
 
-                    // Show confirmation popup
-                    if (confirm(`Are you sure you want to permanently delete "${item.filename}" from your system?\n\nThis action cannot be undone.`)) {
-                      try {
-                        let file = new FileUtils.File(item.targetPath);
-                        if (file.exists()) {
-                          file.remove(false); // false = don't recursively delete directories
-                          
-                          // Mark the download as deleted in the UI without trying to remove from history
-                          item.deleted = true;
-                          
-                          // Remove from our local list to update the UI
-                          allFetchedDownloads = allFetchedDownloads.filter(d => d.id !== item.id);
-                          updateAndRenderDownloadsList();
-                          alert(`File "${item.filename}" was successfully deleted.`);
-                        } else {
-                          alert(`File "${item.filename}" not found on disk.`);
+                    if (item.status === 'completed') {
+                        if (confirm(`Are you sure you want to permanently delete "${item.filename}" from your system?\n\nThis action cannot be undone.`)) {
+                          try {
+                            let file = new FileUtils.File(item.targetPath);
+                            if (file.exists()) {
+                              file.remove(false); 
+                              item.deleted = true;
+                              allFetchedDownloads = allFetchedDownloads.filter(d => d.id !== item.id);
+                              updateAndRenderDownloadsList();
+                              alert(`File "${item.filename}" was successfully deleted.`);
+                            } else {
+                              alert(`File "${item.filename}" not found on disk. It might have been removed from history only.`);
+                              allFetchedDownloads = allFetchedDownloads.filter(d => d.id !== item.id);
+                              updateAndRenderDownloadsList();
+                            }
+                          } catch (e) { 
+                            console.error("Error deleting file:", e); 
+                            alert(`Could not delete file: ${item.filename}\n\nError: ${e.message}`); 
+                          }
                         }
-                      } catch (e) { 
-                        console.error("Error deleting file:", e); 
-                        alert(`Could not delete file: ${item.filename}\n\nError: ${e.message}`); 
-                      }
+                    } else {
+                         if (confirm(`Remove "${item.filename}" from the list?`)) {
+                            allFetchedDownloads = allFetchedDownloads.filter(d => d.id !== item.id);
+                            updateAndRenderDownloadsList();
+                         }
                     }
                     break;
                 }
@@ -964,17 +963,15 @@
                 const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
 
                 filteredDisplayDownloads = allFetchedDownloads.filter(item => {
+                  if (item.deleted) return false;
                   if (currentViewMode === 'recent' && item.timestamp < sevenDaysAgo) return false;
                   if (currentViewMode === 'history' && item.timestamp >= sevenDaysAgo) return false;
                   if (currentStatusFilter !== 'all' && item.status !== currentStatusFilter) return false;
-                  
                   if (currentCategoryFilter !== 'all' && item.category !== currentCategoryFilter) {
                       return false;
                   }
-
                   const itemFilename = item.filename || "";
                   const itemUrl = item.url || "";
-
                   if (searchTermLower &&
                     !itemFilename.toLowerCase().includes(searchTermLower) &&
                     !itemUrl.toLowerCase().includes(searchTermLower)) {
@@ -1008,23 +1005,18 @@
                   });
                 });
 
-                // --- MODIFIED: Event listener for category tabs for animation ---
                 const categoryTabsContainerEl = downloadsViewContainer.querySelector('.haven-dl-category-tabs-container');
                 categoryTabsContainerEl.querySelectorAll('.haven-dl-category-tab').forEach(tab => {
                   tab.addEventListener('click', (e) => {
                     const clickedTab = e.currentTarget;
                     currentCategoryFilter = clickedTab.dataset.category;
-
-                    // Update active class for text color
                     categoryTabsContainerEl.querySelectorAll('.haven-dl-category-tab').forEach(t => t.classList.remove('active'));
                     clickedTab.classList.add('active');
-                    
-                    updateCategoryIndicatorPosition(clickedTab); // Animate indicator
+                    updateCategoryIndicatorPosition(clickedTab);
                     updateAndRenderDownloadsList();
                   });
                 });
 
-                // Ensure initial indicator position is set after UI is fully ready
                 const initialActiveCatTab = categoryTabsContainerEl.querySelector(`.haven-dl-category-tab[data-category="${currentCategoryFilter}"]`);
                 if (initialActiveCatTab) {
                     updateCategoryIndicatorPosition(initialActiveCatTab);
@@ -1045,89 +1037,37 @@
                   allFetchedDownloads = allDownloadsRaw.map(d => {
                     let filename = 'Unknown Filename';
                     let targetPath = '';
-
                     if (d.target && d.target.path) {
                       try {
                         let file = new FileUtils.File(d.target.path);
                         filename = file.leafName;
                         targetPath = d.target.path;
                       } catch (e) {
-                        console.warn("[ZenHaven Downloads] Error creating FileUtils.File or getting leafName from path:", d.target.path, e);
                         const pathParts = String(d.target.path).split(/[\\/]/);
                         filename = pathParts.pop() || "ErrorInPathUtil";
                       }
                     }
-
                     if ((filename === 'Unknown Filename' || filename === "ErrorInPathUtil") && d.source && d.source.url) {
                       try {
                         const decodedUrl = decodeURIComponent(d.source.url);
                         let urlObj;
-                        try {
-                            urlObj = new URL(decodedUrl);
-                            const pathSegments = urlObj.pathname.split('/');
-                            filename = pathSegments.pop() || pathSegments.pop() || 'Unknown from URL Path';
-                        } catch (urlParseError) { 
-                            const urlPartsDirect = String(d.source.url).split('/');
-                            const lastPartDirect = urlPartsDirect.pop() || urlPartsDirect.pop();
-                            filename = (lastPartDirect.split('?')[0]) || 'Invalid URL Filename';
-                        }
-                      }
-                      catch (e) {
-                        console.warn("[ZenHaven Downloads] Error extracting filename from URL:", d.source.url, e);
-                        const urlPartsDirect = String(d.source.url).split('/');
-                        const lastPartDirect = urlPartsDirect.pop() || urlPartsDirect.pop();
-                        filename = (lastPartDirect.split('?')[0]) || 'Invalid URL Filename';
-                      }
+                        try { urlObj = new URL(decodedUrl); const pathSegments = urlObj.pathname.split('/'); filename = pathSegments.pop() || pathSegments.pop() || 'Unknown from URL Path';
+                        } catch (urlParseError) { const urlPartsDirect = String(d.source.url).split('/'); const lastPartDirect = urlPartsDirect.pop() || urlPartsDirect.pop(); filename = (lastPartDirect.split('?')[0]) || 'Invalid URL Filename'; }
+                      } catch (e) { const urlPartsDirect = String(d.source.url).split('/'); const lastPartDirect = urlPartsDirect.pop() || urlPartsDirect.pop(); filename = (lastPartDirect.split('?')[0]) || 'Invalid URL Filename'; }
                     }
-
-                    let status = 'unknown';
-                    let progressBytes = Number(d.bytesTransferredSoFar) || 0;
-                    let totalBytes = Number(d.totalBytes) || 0;
-
-                    if (d.succeeded) {
-                      status = 'completed';
-                      if (d.target && d.target.size && Number(d.target.size) > totalBytes) {
-                        totalBytes = Number(d.target.size);
-                      }
-                      progressBytes = totalBytes;
+                    let status = 'unknown'; let progressBytes = Number(d.bytesTransferredSoFar) || 0; let totalBytes = Number(d.totalBytes) || 0;
+                    if (d.succeeded) { status = 'completed'; if (d.target && d.target.size && Number(d.target.size) > totalBytes) { totalBytes = Number(d.target.size); } progressBytes = totalBytes;
                     } else if (d.error) { status = 'failed'; }
                     else if (d.canceled) { status = 'failed'; }
-                    else if (d.stopped || d.hasPartialData || d.state === Downloads.STATE_PAUSED || d.state === Downloads.STATE_SCANNING || d.state === Downloads.STATE_BLOCKED_PARENTAL || d.state === Downloads.STATE_BLOCKED_POLICY || d.state === Downloads.STATE_BLOCKED_SECURITY || d.state === Downloads.STATE_DIRTY) {
-                      status = 'paused';
+                    else if (d.stopped || d.hasPartialData || d.state === Downloads.STATE_PAUSED || d.state === Downloads.STATE_SCANNING || d.state === Downloads.STATE_BLOCKED_PARENTAL || d.state === Downloads.STATE_BLOCKED_POLICY || d.state === Downloads.STATE_BLOCKED_SECURITY || d.state === Downloads.STATE_DIRTY) { status = 'paused'; 
                     } else if (d.state === Downloads.STATE_DOWNLOADING) { status = 'paused'; }
-
-                    if (status === 'completed' && totalBytes === 0 && progressBytes > 0) {
-                      totalBytes = progressBytes;
-                    }
-
-                    return {
-                      id: d.id,
-                      filename: String(filename || "FN_MISSING"),
-                      size: formatBytes(totalBytes),
-                      totalBytes: totalBytes,
-                      progressBytes: progressBytes,
-                      type: getFileIconDetails(String(filename || "tmp.file")).text.toLowerCase(),
-                      category: getFileCategory(String(filename || "tmp.file")),
-                      status: status,
-                      url: String(d.source?.url || 'URL_MISSING'),
-                      timestamp: d.endTime || d.startTime || Date.now(),
-                      targetPath: String(targetPath || ""),
-                      historicalData: d,
-                    };
+                    if (status === 'completed' && totalBytes === 0 && progressBytes > 0) { totalBytes = progressBytes; }
+                    return { id: d.id, filename: String(filename || "FN_MISSING"), size: formatBytes(totalBytes), totalBytes: totalBytes, progressBytes: progressBytes, type: getFileIconDetails(String(filename || "tmp.file")).text.toLowerCase(), category: getFileCategory(String(filename || "tmp.file")), status: status, url: String(d.source?.url || 'URL_MISSING'), timestamp: d.endTime || d.startTime || Date.now(), targetPath: String(targetPath || ""), deleted: false, historicalData: d, };
                   }).filter(d => d.timestamp);
-
-                  const loggableDownloads = allFetchedDownloads.map(item => {
-                    const { historicalData, ...rest } = item;
-                    return { ...rest, historicalDataId: historicalData.id };
-                  });
-                  console.log("[ZenHaven Downloads] Processed Download Items (for logging):", JSON.parse(JSON.stringify(loggableDownloads)));
-
                   renderUI();
                 } catch (err) {
                   console.error("[ZenHaven Downloads] Error fetching or processing download history:", err);
-                  if (downloadsViewContainer) {
-                    downloadsViewContainer.innerHTML = `<div class="haven-dl-empty-state"><p>Error loading download history (async init).</p><pre>${err.message}\n${err.stack}</pre></div>`;
-                  }
+                  if (downloadsViewContainer) { downloadsViewContainer.innerHTML = `<div class="haven-dl-empty-state"><p>Error loading download history.</p><pre>${err.message}\n${err.stack}</pre></div>`; }
                 }
               })();
 
@@ -1137,92 +1077,520 @@
               downloadsStyles.id = "haven-downloads-styles";
               downloadsStyles.textContent = `
                 :root {
-                  --haven-dl-bg: #202020; --haven-dl-surface-bg: #2a2a2a; --haven-dl-text-primary: #E0E0E0;
-                  --haven-dl-text-secondary: #A0A0A0; --haven-dl-text-disabled: #666666; --haven-dl-border-color: #404040;
-                  --haven-dl-accent-color: #7B68EE; --haven-dl-accent-hover: #9370DB; --haven-dl-success-color: #5CB85C;
-                  --haven-dl-warning-color: #F0AD4E; --haven-dl-error-color: #D9534F;
-                  --haven-dl-icon-bg-pdf: linear-gradient(135deg, #D9534F, #CD5C5C); --haven-dl-icon-bg-zip: linear-gradient(135deg, #7B68EE, #6A5ACD);
-                  --haven-dl-icon-bg-vid: linear-gradient(135deg, #F0AD4E, #EE9A2E); --haven-dl-icon-bg-doc: linear-gradient(135deg, #5BC0DE, #46B8DA);
-                  --haven-dl-icon-bg-mp3: linear-gradient(135deg, #DB7093, #D86087); --haven-dl-icon-bg-img: linear-gradient(135deg, #5CB85C, #4CAF50);
-                  --haven-dl-icon-bg-default: linear-gradient(135deg, #6c757d, #5a6268);
+                    --haven-dl-bg: #202020;
+                    --haven-dl-surface-bg: #2a2a2a;
+                    --haven-dl-text-primary: #E0E0E0;
+                    --haven-dl-text-secondary: #A0A0A0;
+                    --haven-dl-text-disabled: #666666;
+                    --haven-dl-border-color: #404040;
+                    --haven-dl-accent-color: #7B68EE;
+                    --haven-dl-accent-hover: #9370DB;
+                    --haven-dl-success-color: #5CB85C;
+                    --haven-dl-warning-color: #F0AD4E;
+                    --haven-dl-error-color: #D9534F;
+                    --haven-dl-icon-bg-pdf: linear-gradient(135deg, #D9534F, #CD5C5C);
+                    --haven-dl-icon-bg-zip: linear-gradient(135deg, #7B68EE, #6A5ACD);
+                    --haven-dl-icon-bg-vid: linear-gradient(135deg, #F0AD4E, #EE9A2E);
+                    --haven-dl-icon-bg-doc: linear-gradient(135deg, #5BC0DE, #46B8DA);
+                    --haven-dl-icon-bg-mp3: linear-gradient(135deg, #DB7093, #D86087);
+                    --haven-dl-icon-bg-img: linear-gradient(135deg, #5CB85C, #4CAF50);
+                    --haven-dl-icon-bg-default: linear-gradient(135deg, #6c757d, #5a6268);
                 }
-                /* --- MODIFIED: Overall container background to transparent --- */
-                .haven-downloads-container { display: flex; flex-direction: column; height: 100%; width: 100%; background-color: transparent; color: var(--haven-dl-text-primary); padding: 16px; box-sizing: border-box; overflow: hidden; font-family: system-ui, sans-serif; max-height: 100vh; }
-                .haven-dl-header { flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding: 0 8px; }
-                .haven-dl-title-section { display: flex; align-items: center; gap: 10px; }
-                /* .haven-dl-title-icon-placeholder { font-size: 24px; color: var(--haven-dl-accent-color); } */ /* Style removed as icon is removed */
-                .haven-dl-title-text { font-size: 22px; font-weight: 600; margin: 0; line-height: 1; }
-                .haven-dl-controls { flex-shrink: 0; display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; padding: 0 8px; }
-                .haven-dl-search-filter-row { display: flex; gap: 10px; align-items: center; }
-                .haven-dl-search-box { position: relative; flex-grow: 1; }
-                .haven-dl-search-icon-placeholder { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--haven-dl-text-secondary); pointer-events: none; display: flex; align-items: center; justify-content: center; }
-                .haven-dl-search-icon-placeholder svg { width: 16px; height: 16px; display: block; }
-                .haven-dl-search-input { width: 100%; padding: 8px 10px 8px 34px; border: 1px solid var(--haven-dl-border-color); border-radius: 6px; background-color: var(--haven-dl-surface-bg); color: var(--haven-dl-text-primary); font-size: 14px; box-sizing: border-box; height: 36px; }
-                .haven-dl-search-input:focus { outline: none; border-color: var(--haven-dl-accent-color); box-shadow: 0 0 0 2px rgba(123, 104, 238, 0.3); }
-                .haven-dl-filter-dropdown { padding: 0 12px; border: 1px solid var(--haven-dl-border-color); border-radius: 6px; background-color: var(--haven-dl-surface-bg); color: var(--haven-dl-text-primary); font-size: 13px; cursor: pointer; box-sizing: border-box; height: 36px; -moz-appearance: none; background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23${"A0A0A0".substring(1)}%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.4-5.4-12.8z%22%2F%3E%3C%2Fsvg%3E'); background-repeat: no-repeat; background-position: right 10px top 50%; background-size: .65em auto; padding-right: 30px; }
-                .haven-dl-filter-dropdown:focus { outline: none; }
-                .haven-dl-view-toggle { display: flex; background-color: var(--haven-dl-surface-bg); border-radius: 6px; border: 1px solid var(--haven-dl-border-color); overflow: hidden; height: 36px; }
-                .haven-dl-view-btn { background-color: transparent; border: none; border-radius: 0; padding: 0 12px; color: var(--haven-dl-text-secondary); font-size: 13px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-grow: 1; }
-                .haven-dl-view-btn:not(:last-child) { border-right: 1px solid var(--haven-dl-border-color); }
-                .haven-dl-view-btn.active { background-color: var(--haven-dl-accent-color); color: white; }
-                .haven-dl-view-btn:hover:not(.active) { background-color: var(--haven-dl-border-color); }
-                
-                /* --- MODIFIED: Styles for category tabs animation --- */
-                .haven-dl-category-tabs-container { overflow: hidden; display: flex; gap: 4px; background-color: var(--haven-dl-surface-bg); padding: 4px; border-radius: 6px; border: 1px solid var(--haven-dl-border-color); position: relative; /* For absolute positioning of indicator */ }
+
+                .haven-downloads-container {
+                    display: flex;
+                    flex-direction: column;
+                    height: 100%;
+                    width: 100%;
+                    background-color: transparent;
+                    color: var(--haven-dl-text-primary);
+                    padding: 16px;
+                    box-sizing: border-box;
+                    overflow: hidden;
+                    font-family: system-ui, sans-serif;
+                    max-height: 100vh;
+                }
+
+                .haven-dl-header {
+                    flex-shrink: 0;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 12px;
+                    padding: 0 8px;
+                }
+
+                .haven-dl-title-section {
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                }
+
+                .haven-dl-title-text {
+                    font-size: 22px;
+                    font-weight: 600;
+                    margin: 0;
+                    line-height: 1;
+                }
+
+                .haven-dl-controls {
+                    flex-shrink: 0;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 10px;
+                    margin-bottom: 12px;
+                    padding: 0 8px;
+                }
+
+                .haven-dl-search-filter-row {
+                    display: flex;
+                    gap: 10px;
+                    align-items: center;
+                    flex-wrap: wrap;
+                }
+
+                .haven-dl-search-box {
+                    position: relative;
+                    flex-grow: 0;
+                    width: 250px;
+                }
+
+                .haven-dl-search-icon-placeholder {
+                    position: absolute;
+                    left: 12px;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    color: var(--haven-dl-text-secondary);
+                    pointer-events: none;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+
+                .haven-dl-search-icon-placeholder svg {
+                    width: 16px;
+                    height: 16px;
+                    display: block;
+                }
+
+                .haven-dl-search-input {
+                    width: 100%;
+                    padding: 8px 12px 8px 38px;
+                    border: 1px solid var(--haven-dl-border-color);
+                    border-radius: 163px;
+                    background-color: var(--haven-dl-surface-bg);
+                    color: var(--haven-dl-text-primary);
+                    font-size: 14px;
+                    box-sizing: border-box;
+                    height: 38px;
+                }
+
+                .haven-dl-search-input:focus {
+                    outline: none;
+                    border-color: var(--haven-dl-accent-color);
+                    box-shadow: 0 0 0 2px rgba(123, 104, 238, 0.3);
+                }
+
+                .haven-dl-filter-dropdown {
+                    padding: 0 12px;
+                    border: 1px solid var(--haven-dl-border-color);
+                    border-radius: 16px;
+                    background-color: var(--haven-dl-surface-bg);
+                    color: var(--haven-dl-text-primary);
+                    font-size: 13px;
+                    cursor: pointer;
+                    box-sizing: border-box;
+                    height: 38px;
+                    -moz-appearance: none;
+                    background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23${"A0A0A0".substring(1)}%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.4-5.4-12.8z%22%2F%3E%3C%2Fsvg%3E');
+                    background-repeat: no-repeat;
+                    background-position: right 10px top 50%;
+                    background-size: .65em auto;
+                    padding-right: 30px;
+                    flex-shrink: 0;
+                }
+
+                .haven-dl-filter-dropdown:focus {
+                    outline: none;
+                }
+
+                .haven-dl-view-toggle {
+                    display: flex;
+                    background-color: var(--haven-dl-surface-bg);
+                    border-radius: 8px;
+                    border: 1px solid var(--haven-dl-border-color);
+                    overflow: hidden;
+                    height: 38px;
+                    flex-shrink: 0;
+                }
+
+                .haven-dl-view-btn {
+                    background-color: transparent;
+                    border: none;
+                    border-radius: 0;
+                    padding: 0 12px;
+                    color: var(--haven-dl-text-secondary);
+                    font-size: 13px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    cursor: pointer;
+                    flex-grow: 1;
+                }
+
+                .haven-dl-view-btn:not(:last-child) {
+                    border-right: 1px solid var(--haven-dl-border-color);
+                }
+
+                .haven-dl-view-btn.active {
+                    background-color: var(--haven-dl-accent-color);
+                    color: white;
+                }
+
+                .haven-dl-view-btn:hover:not(.active) {
+                    background-color: var(--haven-dl-border-color);
+                }
+
+                .haven-dl-category-tabs-container {
+                    flex-grow: 1;
+                    min-width: 200px;
+                    overflow: hidden;
+                    display: flex;
+                    gap: 4px;
+                    background-color: var(--haven-dl-surface-bg);
+                    padding: 4px;
+                    border-radius: 16px;
+                    border: 1px solid var(--haven-dl-border-color);
+                    position: relative;
+                    height: 38px;
+                    box-sizing: border-box;
+                }
+
                 .haven-dl-category-active-indicator {
-                  position: absolute;
-                  top: 4px; /* Matches container padding */
-                  height: 30px; /* Matches tab height */
-                  background-color: var(--haven-dl-accent-color);
-                  border-radius: 4px; /* Matches tab border-radius */
-                  transition: left 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), width 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); /* Bouncy animation */
-                  z-index: 0; /* Behind tab content */
-                  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+                    position: absolute;
+                    top: 3px;
+                    bottom: 3px;
+                    height: auto;
+                    background-color: var(--haven-dl-accent-color);
+                    border-radius: 12px;
+                    transition: left 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), width 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+                    z-index: 0;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
                 }
+
                 .haven-dl-category-tab {
-                  flex-grow: 1; padding: 6px 10px; border: none; background-color: transparent; /* No background on tab itself */
-                  border-radius: 4px; font-size: 12px; font-weight: 500; color: var(--haven-dl-text-secondary);
-                  cursor: pointer; transition: color 0.2s; /* Only color transition */
-                  display: flex; align-items: center; justify-content: center; gap: 5px;
-                  height: 30px; box-sizing: border-box;
-                  position: relative; z-index: 1; /* Tab content above indicator */
+                    flex-grow: 1;
+                    padding: 6px 10px;
+                    border: none;
+                    background-color: transparent;
+                    border-radius: 16px;
+                    font-size: 12px;
+                    font-weight: 500;
+                    color: var(--haven-dl-text-secondary);
+                    cursor: pointer;
+                    transition: color 0.2s;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 5px;
+                    height: 100%;
+                    box-sizing: border-box;
+                    position: relative;
+                    z-index: 1;
                 }
+
                 .haven-dl-category-tab.active {
-                  color: white; /* Active tab text color */
-                  /* No background change here, indicator handles it */
+                    color: white;
                 }
+
                 .haven-dl-category-tab:hover:not(.active) {
-                  color: var(--haven-dl-text-primary);
-                  /* background-color: var(--haven-dl-border-color); */ /* Optional hover, consider if it clashes with indicator */
+                    color: var(--haven-dl-text-primary);
                 }
-                .haven-dl-category-tab .haven-dl-tab-icon { display: flex; align-items: center; justify-content: center; }
-                .haven-dl-category-tab .haven-dl-tab-icon svg { width: 14px; height: 14px; }
-                
-                .haven-dl-stats-bar { flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--haven-dl-text-secondary); padding: 8px; margin-bottom: 8px; border-bottom: 1px solid var(--haven-dl-border-color); }
-                .haven-dl-stats-bar strong { color: var(--haven-dl-text-primary); font-weight: 500; }
-                .haven-dl-list-container { flex: 1 1 0; overflow-y: auto; overflow-x: hidden; padding-right: 5px; scrollbar-width: thin; scrollbar-color: var(--haven-dl-border-color) var(--haven-dl-surface-bg); min-height: 0; height: 0; border: 1px solid transparent; }
-                .haven-dl-list-container::-webkit-scrollbar { width: 8px; } .haven-dl-list-container::-webkit-scrollbar-track { background: var(--haven-dl-surface-bg); } .haven-dl-list-container::-webkit-scrollbar-thumb { background-color: var(--haven-dl-border-color); border-radius: 4px; }
-                .haven-dl-date-separator { padding: 10px 8px; font-size: 11px; font-weight: 600; color: var(--haven-dl-text-secondary); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--haven-dl-border-color); margin: 16px 0 8px 0; position: sticky; top: -1px; background: var(--haven-dl-bg); /* This background might need to be transparent too if main one is */ z-index: 1; }
-                .haven-dl-item { display: flex; align-items: center; padding: 12px 8px; border-bottom: 1px solid var(--haven-dl-border-color); transition: background-color 0.15s ease; cursor: default; }
-                .haven-dl-item:hover { background-color: var(--haven-dl-surface-bg); } .haven-dl-item:last-child { border-bottom: none; }
-                .haven-dl-item-icon { width: 36px; height: 36px; border-radius: 6px; display: flex; align-items: center; justify-content: center; margin-right: 12px; font-size: 13px; color: white; font-weight: bold; flex-shrink: 0; text-transform: uppercase; }
-                .pdf-icon { background: var(--haven-dl-icon-bg-pdf); } .zip-icon { background: var(--haven-dl-icon-bg-zip); } .vid-icon { background: var(--haven-dl-icon-bg-vid); } .doc-icon { background: var(--haven-dl-icon-bg-doc); } .mp3-icon { background: var(--haven-dl-icon-bg-mp3); } .img-icon { background: var(--haven-dl-icon-bg-img); } .default-icon { background: var(--haven-dl-icon-bg-default); }
-                .haven-dl-item-info { flex-grow: 1; min-width: 0; cursor: pointer; }
-                .haven-dl-item-name { font-weight: 500; font-size: 14px; color: var(--haven-dl-text-primary); margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-                .haven-dl-item-details { font-size: 12px; color: var(--haven-dl-text-secondary); display: flex; gap: 6px; align-items: center; }
-                .haven-dl-item-url { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 1; max-width: 150px; }
-                .haven-dl-item-status-section { min-width: 100px; text-align: right; margin-left: 12px; flex-shrink: 0; }
-                .haven-dl-item-progress-bar { width: 100%; height: 4px; background-color: var(--haven-dl-border-color); border-radius: 2px; overflow: hidden; margin-bottom: 4px; }
-                .haven-dl-item-progress-fill { height: 100%; border-radius: 2px; } .haven-dl-item-status-text { font-size: 11px; font-weight: 500; }
-                .status-completed { color: var(--haven-dl-success-color); } .haven-dl-item-progress-fill.status-completed { background-color: var(--haven-dl-success-color); }
-                .status-paused { color: var(--haven-dl-warning-color); } .haven-dl-item-progress-fill.status-paused { background-color: var(--haven-dl-warning-color); }
-                .status-failed { color: var(--haven-dl-error-color); } .haven-dl-item-progress-fill.status-failed { background-color: var(--haven-dl-error-color); }
-                .haven-dl-item-actions { display: flex; gap: 6px; margin-left: 16px; flex-shrink: 0; }
-                .haven-dl-action-btn { width: 30px; height: 30px; border: none; border-radius: 4px; background-color: var(--haven-dl-surface-bg); color: var(--haven-dl-text-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background-color 0.2s, color 0.2s; font-size: 16px; }
-                .haven-dl-action-btn:hover { background-color: var(--haven-dl-border-color); color: var(--haven-dl-text-primary); }
-                .haven-dl-empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--haven-dl-text-secondary); text-align: center; }
-                .haven-dl-empty-icon-placeholder { font-size: 48px; color: var(--haven-dl-text-disabled); margin-bottom: 16px; }
-                .haven-dl-empty-state p { font-size: 16px; }
+
+                .haven-dl-category-tab .haven-dl-tab-icon {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+
+                .haven-dl-category-tab .haven-dl-tab-icon svg {
+                    width: 14px;
+                    height: 14px;
+                }
+
+                .haven-dl-stats-bar {
+                    flex-shrink: 0;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    font-size: 12px;
+                    color: var(--haven-dl-text-secondary);
+                    padding: 8px;
+                    margin-bottom: 8px;
+                    border-bottom: 1px solid var(--haven-dl-border-color);
+                }
+
+                .haven-dl-stats-bar strong {
+                    color: var(--haven-dl-text-primary);
+                    font-weight: 500;
+                }
+
+                .haven-dl-list-container {
+                    flex: 1 1 0;
+                    overflow-y: auto;
+                    overflow-x: hidden;
+                    min-height: 0;
+                    height: 0;
+                    padding: 8px;
+                    box-sizing: border-box;
+                }
+
+                .haven-dl-list-container::-webkit-scrollbar {
+                    width: 8px;
+                }
+
+                .haven-dl-list-container::-webkit-scrollbar-track {
+                    background: transparent;
+                }
+
+                .haven-dl-list-container::-webkit-scrollbar-thumb {
+                    background-color: var(--haven-dl-border-color);
+                    border-radius: 4px;
+                }
+
+                .haven-dl-date-separator {
+                    padding: 10px 8px;
+                    font-size: 11px;
+                    font-weight: 600;
+                    color: var(--haven-dl-text-secondary);
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                    border-bottom: 1px solid var(--haven-dl-border-color);
+                    margin: 8px -8px 8px -8px;
+                    padding-left: 16px;
+                    padding-right: 16px;
+                    position: sticky;
+                    top: -8px;
+                    z-index: 10;
+                }
+
+                .haven-dl-item {
+                    display: flex;
+                    align-items: flex-start;
+                    padding: 12px;
+                    cursor: default;
+                    border-radius: 16px;
+                    border: 1px solid var(--haven-dl-border-color);
+                    margin-bottom: 6px;
+                    background-color: rgba(0, 0, 0, 0.27);
+                    gap: 12px;
+                    transition: background-color 0.15s ease, padding-bottom 0.3s ease-out;
+                }
+
+                .haven-dl-item:last-child {
+                    margin-bottom: 0;
+                }
+
+                .haven-dl-item:hover {
+                    background-color: rgba(0, 0, 0, 0.56);
+                }
+
+                .haven-dl-item-icon {
+                    width: 40px;
+                    height: 40px;
+                    border-radius: 8px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 14px;
+                    color: white;
+                    font-weight: bold;
+                    flex-shrink: 0;
+                    text-transform: uppercase;
+                }
+
+                .pdf-icon {
+                    background: var(--haven-dl-icon-bg-pdf);
+                }
+
+                .zip-icon {
+                    background: var(--haven-dl-icon-bg-zip);
+                }
+
+                .vid-icon {
+                    background: var(--haven-dl-icon-bg-vid);
+                }
+
+                .doc-icon {
+                    background: var(--haven-dl-icon-bg-doc);
+                }
+
+                .mp3-icon {
+                    background: var(--haven-dl-icon-bg-mp3);
+                }
+
+                .img-icon {
+                    background: var(--haven-dl-icon-bg-img);
+                }
+
+                .default-icon {
+                    background: var(--haven-dl-icon-bg-default);
+                }
+
+                .haven-dl-item-main-content {
+                    display: flex;
+                    flex-direction: column;
+                    flex-grow: 1;
+                    min-width: 0;
+                    gap: 8px;
+                }
+
+                .haven-dl-item-info {
+                    min-width: 0;
+                    cursor: pointer;
+                }
+
+                .haven-dl-item-name {
+                    font-weight: 500;
+                    font-size: 14px;
+                    color: var(--haven-dl-text-primary);
+                    margin-bottom: 4px;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                }
+
+                .haven-dl-item-details {
+                    font-size: 12px;
+                    color: var(--haven-dl-text-secondary);
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 6px;
+                    align-items: center;
+                }
+
+                .haven-dl-item-url {
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                }
+
+                .haven-dl-item-status-section {
+                    width: 100%;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 6px;
+                }
+
+                .haven-dl-item-status-text {
+                    font-size: 11px;
+                    font-weight: 500;
+                    padding: 3px 8px;
+                    border-radius: 4px;
+                    background-color: var(--haven-dl-border-color);
+                    color: var(--haven-dl-text-primary);
+                    display: inline-block;
+                    align-self: flex-start;
+                }
+
+                .haven-dl-item-progress-bar {
+                    width: 100%;
+                    height: 6px;
+                    background-color: var(--haven-dl-border-color);
+                    border-radius: 3px;
+                    overflow: hidden;
+                }
+
+                .haven-dl-item-progress-fill {
+                    height: 100%;
+                    border-radius: 3px;
+                }
+
+                .status-completed {
+                    color: var(--haven-dl-success-color) !important;
+                }
+
+                .haven-dl-item-progress-fill.status-completed {
+                    background-color: var(--haven-dl-success-color);
+                }
+
+                .status-paused {
+                    color: var(--haven-dl-warning-color) !important;
+                }
+
+                .haven-dl-item-progress-fill.status-paused {
+                    background-color: var(--haven-dl-warning-color);
+                }
+
+                .status-failed {
+                    color: var(--haven-dl-error-color) !important;
+                }
+
+                .haven-dl-item-progress-fill.status-failed {
+                    background-color: var(--haven-dl-error-color);
+                }
+
+                .haven-dl-item-actions {
+                    display: flex;
+                    gap: 8px;
+                    max-height: 0; 
+                    opacity: 0; 
+                    overflow: hidden;
+                    margin-top: 0; 
+                    transition: max-height 0.3s ease-out, opacity 0.2s ease-out 0.1s, margin-top 0.3s ease-out;
+                }
+
+                .haven-dl-item:hover .haven-dl-item-actions {
+                    max-height: 40px;
+                    opacity: 1;
+                    margin-top: 8px;
+                }
+
+                .haven-dl-action-btn {
+                    width: auto;
+                    padding: 5px 10px;
+                    height: 30px;
+                    border: none;
+                    border-radius: 12px;
+                    background-color: var(--haven-dl-surface-bg);
+                    color: var(--haven-dl-text-secondary);
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition: background-color 0.2s, color 0.2s;
+                    font-size: 12px;
+                }
+
+                .haven-dl-action-btn svg {
+                    margin-right: 5px;
+                }
+
+                .haven-dl-action-btn:hover {
+                    background-color: var(--haven-dl-border-color);
+                    color: var(--haven-dl-text-primary);
+                }
+
+                .haven-dl-empty-state {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    height: 100%;
+                    color: var(--haven-dl-text-secondary);
+                    text-align: center;
+                    padding: 20px;
+                }
+
+                .haven-dl-empty-icon-placeholder {
+                    font-size: 48px;
+                    color: var(--haven-dl-text-disabled);
+                    margin-bottom: 16px;
+                }
+
+                .haven-dl-empty-state p {
+                    font-size: 16px;
+                }
               `;
               document.head.appendChild(downloadsStyles);
             }
